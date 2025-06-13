@@ -10,6 +10,19 @@ const redis = new Redis({ host: 'localhost', port: Number(6379) });
 const publisher = new Redis({ host: 'localhost', port: Number(6379) });
 const subscriber = new Redis({ host: 'localhost', port: Number(6379) });
 
+
+// interface cacheStore {
+//   totalPageCount: number;
+// }
+
+// const cacheStore: cacheStore = { 
+
+// // Clear, LRU(Least Recent Use), Server Crash, New Set of Problems
+// // It can be solved by using Redis
+
+//   totalPageCount: 0
+// }
+
 const httpServer = http.createServer(app); // Http Server (Express Server ko mount kardiya http pr)
 const io = new Server(); // Socket Server
 io.attach(httpServer);
@@ -51,6 +64,7 @@ const PORT = process.env.PORT ?? 8000;
 
 app.use(express.static('./public'));
 
+// Global Rate Limit
 app.use(async function (req, res, next) {
   const key = 'rate-limit';
   const value = await redis.get(key);
@@ -67,6 +81,7 @@ app.use(async function (req, res, next) {
   await redis.incr(key);
   next();
 });
+/////////////////////////////////////////////////
 
 app.get('/state', async (req, res) => {
   const state = await redis.get(stateKey);
@@ -79,10 +94,12 @@ app.get('/state', async (req, res) => {
   return res.json({ state: [] });
 });
 
+// GET /
 app.get('/', (req, res) => {
   return res.json({ status: 'success' });
 });
 
+// GET /books
 app.get('/books', async (req, res) => {
   const response = await axios.get(
     'https://api.freeapi.app/api/v1/public/books'
@@ -90,30 +107,40 @@ app.get('/books', async (req, res) => {
   return res.json(response.data);
 });
 
+// GET /books/total
 app.get('/books/total', async (req, res) => {
-  // Check Cache
+
+  // Check Cache Value in Redis
   const cachedValue = await redis.get('totalPageValue');
   if (cachedValue) {
-    console.log(`Cache Hit`);
+    console.log(`Cache Hit`); // Cache mein mil gaya
     return res.json({ totalPageCount: Number(cachedValue) });
   }
+  
+  // if (cacheStore.totalPageCount) {
+  //   console.log(`Cache Hit`); // Cache mein mil gaya
+  //   return res.json({ totalPageCount: Number(cachedValue) });
+  // }
 
   const response = await axios.get(
     'https://api.freeapi.app/api/v1/public/books'
   );
 
+  // Calculate Total Page Count
   const totalPageCount = response?.data?.data?.data?.reduce(
     (acc: number, curr: { volumeInfo?: { pageCount?: number } }) =>
       !curr.volumeInfo?.pageCount ? 0 : curr.volumeInfo.pageCount + acc,
     0
   );
 
+  // Set Cache Value in Redis
   await redis.set('totalPageValue', totalPageCount);
 
-  console.log(`Cache Miss`);
+  console.log(`Cache Miss`); // Cache mein nahi mila
   return res.json({ totalPageCount });
 });
 
+// Start Server
 httpServer.listen(PORT, () =>
   console.log(`HTTP Server is Running on PORT ${PORT}`)
 );
