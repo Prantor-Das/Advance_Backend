@@ -23,7 +23,11 @@ const subscriber = new Redis({ host: 'localhost', port: Number(6379) });
 //   totalPageCount: 0
 // }
 
+// Creating an http server
 const httpServer = http.createServer(app); // Http Server (Express Server ko mount kardiya http pr)
+
+//////////////////////////////////////////
+// Socket
 const io = new Server(); // Socket Server
 io.attach(httpServer);
 
@@ -38,12 +42,16 @@ subscriber.on('message', (channel, message) => {
   io.emit(event, data); // Relay kardo
 });
 
+// Socket Events: Client to Server
 io.on('connection', (socket) => {
   console.log(`Socket Connected`, socket.id);
+
+  // Socket Events: Server to Client
   socket.on('message', (msg) => {
     io.emit('server-message', msg); // Broadcast to all the connected clients
   });
 
+  // Update the state
   socket.on('checkbox-update', async (data) => {
     const state = await redis.get(stateKey);
 
@@ -59,30 +67,40 @@ io.on('connection', (socket) => {
     );
   });
 });
+//////////////////////////////////////////////////////////
 
 const PORT = process.env.PORT ?? 8000;
 
 app.use(express.static('./public'));
 
+/////////////////////////////////////////
 // Global Rate Limit
 app.use(async function (req, res, next) {
   const key = 'rate-limit';
+
+  // rate limit per ip
+  // const key = `rate-limit:${req.ip}`
+
+  // rate limit per user
+  // const key = `rate-limit:${req.user.id}`
+
   const value = await redis.get(key);
 
   if (value === null) {
     await redis.set(key, 0);
-    await redis.expire(key, 60);
+    await redis.expire(key, 60); // expire key in 60 seconds
   }
 
   if (Number(value) > 100) {
     return res.status(429).json({ message: 'Too Many Requests' });
   }
 
-  await redis.incr(key);
+  await redis.incr(key); // increase key value by 1
   next();
 });
 /////////////////////////////////////////////////
 
+// GET /state
 app.get('/state', async (req, res) => {
   const state = await redis.get(stateKey);
 
@@ -144,3 +162,5 @@ app.get('/books/total', async (req, res) => {
 httpServer.listen(PORT, () =>
   console.log(`HTTP Server is Running on PORT ${PORT}`)
 );
+// we will not use app.listen()
+// app.listen(PORT, () => console.log(`HTTP Server is Running on PORT ${PORT}`));

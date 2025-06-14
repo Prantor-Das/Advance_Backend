@@ -7,10 +7,27 @@
   </head>
   <body>
     <div id="checkbox-container"></div>
+
+    <!-- Expose the frontend client script -->
     <script src="/socket.io/socket.io.js"></script>
+    <!-- We can also use the CDN -->
+
     <script>
       const checkboxes = new Array(100).fill(0);
       const checkBoxContainer = document.getElementById('checkbox-container');
+
+      // const sendButton = document.getElementById('send-btn');
+      // sendButton.addEventListener('click', () => {
+      //   const message = document.getElementById('message');
+
+      //   // Emit the message
+      //   socket.emit('message', message.value);
+      //   message.value = '';
+ 
+      //   // for group
+      //   socket.emit('group:id', message.value);
+      //   message.value = '';
+      // });
 
       checkboxes.forEach((checkbox, i) => {
         const input = document.createElement('input');
@@ -25,6 +42,7 @@
       const socket = io(); // Connects to the backend over websocket
       const messageContainer = document.getElementById('messages-container');
 
+      // Fetch the state
       async function stateUpdate() {
         const resp = await fetch('/state', {
           headers: {
