@@ -24,7 +24,8 @@ const subscriber = new Redis({ host: 'localhost', port: Number(6379) });
 // }
 
 // Creating an http server
-const httpServer = http.createServer(app); // Http Server (Express Server ko mount kardiya http pr)
+const httpServer = http.createServer(app); 
+// Http Server (Express Server ko mount kardiya http pr)
 
 //////////////////////////////////////////
 // Socket
